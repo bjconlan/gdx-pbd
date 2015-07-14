@@ -3,28 +3,29 @@ package pbd;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 
-public class CubicKernel {
-	private static final float K_FACTOR = 8.0f;
-	private static final float L_FACTOR = 48.0f;
+public class SPHKernel {
+	private float r;
+	private float k;
+	private float l;
+	private float wZero;
 
-	static float r;
-	static float k;
-	static float l;
-	static float wZero;
+	public SPHKernel(float radius) {
+		setRadius(radius);
+	}
 
-	public static float getRadius() {
+	public float getRadius() {
 		return r;
 	}
 
-	public static void setRadius(final float radius) {
+	public void setRadius(final float radius) {
 		r = radius;
 		final float h3 = r * r * r;
-		k = K_FACTOR / (MathUtils.PI * h3);
-		l = L_FACTOR / (MathUtils.PI * h3);
-		wZero = W(new Vector3());
+		k = 8f / (MathUtils.PI * h3);
+		l = 48f / (MathUtils.PI * h3);
+		wZero = w(new Vector3());
 	}
 
-	public static float W(final Vector3 rv) {
+	public float w(final Vector3 rv) {
 		final float rl = rv.len();
 		final float q = rl / r;
 		if (q <= 0.5f) {
@@ -38,7 +39,7 @@ public class CubicKernel {
 	}
 
 	// FIXME (kotlin vector3 extension)
-	public static Vector3 gradW(final Vector3 rv) {
+	public Vector3 gradW(final Vector3 rv) {
 		final float rl = rv.len();
 		final float q = rl / r;
 		if (rl > 1.0e-6) {
@@ -53,5 +54,5 @@ public class CubicKernel {
 		return Vector3.Zero;
 	}
 
-	public static float W_ZERO() { return wZero; }
+	public float wZero() { return wZero; }
 }

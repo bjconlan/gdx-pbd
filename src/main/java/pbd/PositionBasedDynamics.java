@@ -8,6 +8,12 @@ import java.util.Arrays;
  * @since ${project.version}
  */
 public class PositionBasedDynamics {
+	private SPHKernel sphKernel;
+
+	public PositionBasedDynamics(SPHKernel sphKernel) {
+		this.sphKernel = sphKernel;
+	}
+
 	// helper read col of matrix
 	static Vector3 col(final Matrix3 mtx, int col) {
 		float[] m = mtx.val;
@@ -1486,12 +1492,12 @@ public class PositionBasedDynamics {
 	                          final boolean boundaryHandling,
 	                          float density_err, // pass by ref Float
 	                          float density) {   // pass by ref Float
-		density = mass[particleIndex] * CubicKernel.W_ZERO();
+		density = mass[particleIndex] * sphKernel.wZero();
 		for (int neighborIndex : neighbors) {
 			if (neighborIndex < numberOfParticles) {
-				density += mass[neighborIndex] * CubicKernel.W(new Vector3(x[particleIndex]).sub(x[neighborIndex]));
+				density += mass[neighborIndex] * sphKernel.w(new Vector3(x[particleIndex]).sub(x[neighborIndex]));
 			} else if (boundaryHandling) {
-				density += boundaryPsi[neighborIndex - numberOfParticles] * CubicKernel.W(new Vector3(x[particleIndex]).sub(boundaryX[neighborIndex - numberOfParticles]));
+				density += boundaryPsi[neighborIndex - numberOfParticles] * sphKernel.w(new Vector3(x[particleIndex]).sub(boundaryX[neighborIndex - numberOfParticles]));
 			}
 		}
 		density_err = Math.max(density, density0) - density0;
@@ -1519,11 +1525,11 @@ public class PositionBasedDynamics {
 
 			for (int neighborIndex : neighbors) {
 				if (neighborIndex < numberOfParticles) {
-					Vector3 gradC_j = CubicKernel.gradW(new Vector3(x[particleIndex]).sub(x[neighborIndex])).scl(-mass[neighborIndex] / density0);
+					Vector3 gradC_j = sphKernel.gradW(new Vector3(x[particleIndex]).sub(x[neighborIndex])).scl(-mass[neighborIndex] / density0);
 					sum_grad_C2 += gradC_j.len2();
 					gradC_i.sub(gradC_j);
 				} else if (boundaryHandling) {
-					Vector3 gradC_j = CubicKernel.gradW(new Vector3(x[particleIndex]).sub(boundaryX[neighborIndex - numberOfParticles])).scl(-boundaryPsi[neighborIndex - numberOfParticles] / density0);
+					Vector3 gradC_j = sphKernel.gradW(new Vector3(x[particleIndex]).sub(boundaryX[neighborIndex - numberOfParticles])).scl(-boundaryPsi[neighborIndex - numberOfParticles] / density0);
 					sum_grad_C2 += gradC_j.len2();
 					gradC_i.sub(gradC_j);
 				}
@@ -1550,10 +1556,10 @@ public class PositionBasedDynamics {
 		corr.setZero();
 		for (int neighborIndex : neighbors) {
 			if (neighborIndex < numberOfParticles) {
-				Vector3 gradC_j = CubicKernel.gradW(x[particleIndex].sub(x[neighborIndex])).scl(-mass[neighborIndex] / density0);
+				Vector3 gradC_j = sphKernel.gradW(x[particleIndex].sub(x[neighborIndex])).scl(-mass[neighborIndex] / density0);
 				corr.sub(gradC_j.scl(lambda[particleIndex] + lambda[neighborIndex]));
 			} else if (boundaryHandling) {
-				Vector3 gradC_j = CubicKernel.gradW(x[particleIndex].sub(boundaryX[neighborIndex - numberOfParticles])).scl(-boundaryPsi[neighborIndex - numberOfParticles] / density0);
+				Vector3 gradC_j = sphKernel.gradW(x[particleIndex].sub(boundaryX[neighborIndex - numberOfParticles])).scl(-boundaryPsi[neighborIndex - numberOfParticles] / density0);
 				corr.sub(gradC_j.scl(lambda[particleIndex]));
 			}
 		}

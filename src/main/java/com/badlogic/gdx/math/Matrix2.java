@@ -7,6 +7,7 @@ import java.util.Arrays;
 
 public class Matrix2 implements Serializable {
 	private static final long serialVersionUID = 1L;
+	public static final Matrix2 ZERO = new Matrix2(new float[4]);
 	public static final int M00 = 0;
 	public static final int M01 = 1;
 	public static final int M10 = 2;
@@ -77,6 +78,21 @@ public class Matrix2 implements Serializable {
 		r.m00 = val[M00]; r.m01 = val[M01]; r.m02 = 0;
 		r.m10 = val[M10]; r.m11 = val[M11]; r.m02 = 0;
 		return r;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		Matrix2 matrix2 = (Matrix2) o;
+
+		return Arrays.equals(val, matrix2.val);
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(val);
 	}
 
 	@Override
