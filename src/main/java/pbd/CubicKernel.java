@@ -37,7 +37,7 @@ public class CubicKernel {
 		}
 	}
 
-	public Vector3 gradW(final Vector3 rv) {
+	public static Vector3 gradW(final Vector3 rv) {
 		final float rl = rv.len();
 		final float q = rl / r;
 		if (rl > 1.0e-6) {

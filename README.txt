@@ -1,4 +1,4 @@
-Java bindings for the PositionBasedDynamics library found at
+Java implementation for the PositionBasedDynamics library found at
 https://github.com/janbender/PositionBasedDynamics
 
 As such this work falls under the same generous license of which
