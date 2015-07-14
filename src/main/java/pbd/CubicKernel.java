@@ -37,6 +37,7 @@ public class CubicKernel {
 		}
 	}
 
+	// FIXME (kotlin vector3 extension)
 	public static Vector3 gradW(final Vector3 rv) {
 		final float rl = rv.len();
 		final float q = rl / r;
