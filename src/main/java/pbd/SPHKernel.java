@@ -3,6 +3,7 @@ package pbd;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 
+// Perhaps this should be a singleton
 public class SPHKernel {
 	private float r;
 	private float k;
@@ -25,27 +26,30 @@ public class SPHKernel {
 		wZero = w(new Vector3());
 	}
 
+	public float wZero() {
+		return wZero;
+	}
+
 	public float w(final Vector3 rv) {
-		final float rl = rv.len();
-		final float q = rl / r;
+		float rl = rv.len();
+		float q = rl / r;
 		if (q <= 0.5f) {
-			final float q2 = q * q;
-			final float q3 = q2 * q;
+			float q2 = q * q;
+			float q3 = q2 * q;
 			return k * (6.0f * q3 - 6.0f * q2 + 1.0f);
 		} else {
-			final float fac = 1.0f - q;
+			float fac = 1.0f - q;
 			return k * (2.0f * (fac * fac * fac));
 		}
 	}
 
-	// FIXME (kotlin vector3 extension)
 	public Vector3 gradW(final Vector3 rv) {
-		final float rl = rv.len();
-		final float q = rl / r;
+		float rl = rv.len();
+		float q = rl / r;
 		if (rl > 1.0e-6) {
-			final Vector3 gradq = rv.scl(1.0f / (rl * r));
+			Vector3 gradq = new Vector3(rv).scl(1.0f / (rl * r));
 			if (q <= 0.5f) {
-				return gradq.scl(l * q * 3.0f * q - 2.0f);
+				return gradq.scl(l * q * (3.0f * q - 2.0f));
 			} else {
 				final float fac = 1.0f - q;
 				return gradq.scl(l * (-fac * fac));
@@ -53,6 +57,4 @@ public class SPHKernel {
 		}
 		return Vector3.Zero;
 	}
-
-	public float wZero() { return wZero; }
 }
