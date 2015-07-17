@@ -3,8 +3,14 @@ package pbd;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 
-// Perhaps this should be a singleton
-public class SPHKernel {
+/**
+ * A non threadsafe sph kernel implementation (cubic kernel in cpp source)
+ * as used by the position based dynamics class.
+ *
+ * @version ${project.version}
+ * @since 1.1.0
+ */
+public class SPHKernel { // this should be a singleton
 	private float r;
 	private float k;
 	private float l;
@@ -20,7 +26,7 @@ public class SPHKernel {
 
 	public void setRadius(final float radius) {
 		r = radius;
-		final float h3 = r * r * r;
+		float h3 = r * r * r;
 		k = 8f / (MathUtils.PI * h3);
 		l = 48f / (MathUtils.PI * h3);
 		wZero = w(new Vector3());

@@ -1,6 +1,5 @@
 package pdb;
 
-import com.badlogic.gdx.math.Matrix2;
 import com.badlogic.gdx.math.Vector3;
 import pbd.SPHKernel;
 import org.junit.Test;

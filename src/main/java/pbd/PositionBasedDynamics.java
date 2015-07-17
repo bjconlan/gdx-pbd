@@ -5,7 +5,7 @@ import java.util.Arrays;
 
 /**
  * @version ${project.version}
- * @since ${project.version}
+ * @since 1.1.0
  */
 public class PositionBasedDynamics {
 	private SPHKernel sphKernel;
@@ -15,7 +15,7 @@ public class PositionBasedDynamics {
 	}
 
 	// helper read col of matrix
-	static Vector3 col(final Matrix3 mtx, int col) {
+	private static Vector3 col(final Matrix3 mtx, int col) {
 		float[] m = mtx.val;
 		switch (col) {
 			case 0  : return new Vector3(m[Matrix3.M00], m[Matrix3.M10], m[Matrix3.M20]);
@@ -25,7 +25,7 @@ public class PositionBasedDynamics {
 	}
 
 	// helper set col
-	static void setCol(final Vector3 v, Matrix3 mtx, int col) {
+	private static void setCol(final Vector3 v, Matrix3 mtx, int col) {
 		float[] m = mtx.val;
 		switch (col) {
 			case 0  : m[Matrix3.M00] = v.x; m[Matrix3.M10] = v.y; m[Matrix3.M20] = v.z; return;
@@ -35,7 +35,7 @@ public class PositionBasedDynamics {
 	}
 
 	// helper read row of matrix
-	static Vector3 row(final Matrix3 mtx, int row) {
+	private static Vector3 row(final Matrix3 mtx, int row) {
 		float[] m = mtx.val;
 		switch (row) {
 			case 0  : return new Vector3(m[Matrix3.M00], m[Matrix3.M01], m[Matrix3.M02]);
@@ -45,7 +45,7 @@ public class PositionBasedDynamics {
 	}
 
 	// helper set row
-	static void setRow(final Vector3 v, Matrix3 mtx, int row) {
+	private static void setRow(final Vector3 v, Matrix3 mtx, int row) {
 		float[] m = mtx.val;
 		switch (row) {
 			case 0  : m[Matrix3.M00] = v.x; m[Matrix3.M01] = v.y; m[Matrix3.M02] = v.z; return;
@@ -55,65 +55,69 @@ public class PositionBasedDynamics {
 	}
 
 	// NOTE we pretend this is a matrix2
-	static float get(Affine2 m, int c, int r) {
+	private static float get(Affine2 m, int c, int r) {
 		return c == 0
 				? r == 0 ? m.m00 : m.m01
 				: r == 0 ? m.m10 : m.m11;
 	}
 
-	static float get(Vector3 v, int c) {
+	private static float get(Vector3 v, int c) {
 		return c == 0 ? v.x : c == 1 ? v.y : v.z;
 	}
-	static void set(Vector3 v, int c, float val) {
+
+	private static void set(Vector3 v, int c, float val) {
 		if (c == 0) { v.x = val; } else if (c == 1) { v.y = val; } else { v.z = val; }
 	}
 
 	// helper to get position in matrix
-	static int mtx3Pos(int r, int c) {
-		return (c * 3) + r;
+	private static int mtx3Pos(int c, int r) {
+		return r * 3 + c;
 	}
 
-	static int mtx4Pos(int r, int c) {
-		return (c * 4) * r;
+	private static int mtx4Pos(int c, int r) {
+		return r * 4 + c;
 	}
 
-	static void jacobiRotate(Matrix3 a, Matrix3 r, int p, int q) {
-		if (a.val[mtx3Pos(p, q)] == 0f) { // check this
-			return;
-		}
+	/**
+	 * rotates A through phi in pq-plane to set A(p,q) = 0
+	 * rotation stored in R whose columns are eigenvectors of A.
+	 *
+	 * Review the jacobi rotate 3 used by the bullet implementation
+	 * https://github.com/libgdx/libgdx/blob/master/extensions/gdx-bullet/jni/src/bullet/LinearMath/btMatrix3x3.h#L696
+	 */
+	private static void jacobiRotate(Matrix3 a, Matrix3 r, int p, int q) {
+		if (a.val[mtx3Pos(p, q)] == 0.0f) { return; }
 
-		float d = (a.val[mtx3Pos(p, p)] - a.val[mtx3Pos(q, q)]) / (2f * a.val[mtx3Pos(p, q)]);
-		float t = 1.0f / (Math.abs(d) + (float)Math.sqrt(d * d + 1f));
-		if (d < 0f) {
+		float d = (a.val[mtx3Pos(p, p)] - a.val[mtx3Pos(q, q)]) / (2.0f * a.val[mtx3Pos(p, q)]);
+		float t = 1.0f / (Math.abs(d) + (float)Math.sqrt(d * d + 1.0f));
+		if (d < 0.0f) {
 			t = -t;
 		}
-		float c = 1.0f / (float)Math.sqrt((t * t) + 1); // this can be moved up above the if
+
+		float c = 1.0f / (float)Math.sqrt(t * t + 1.0f);
 		float s = t * c;
 		a.val[mtx3Pos(p, p)] += t * a.val[mtx3Pos(p, q)];
 		a.val[mtx3Pos(q, q)] -= t * a.val[mtx3Pos(p, q)];
-		a.val[mtx3Pos(p, q)] = a.val[mtx3Pos(q, p)] = 0f;
+		a.val[mtx3Pos(p, q)] = a.val[mtx3Pos(q, p)] = 0.0f;
 
 		for (int k = 0; k < 3; k++) {
 			if (k != p && k != q) {
-				float Akp = c * a.val[mtx3Pos(k, p)] + s * a.val[mtx3Pos(k, q)];
-				float Akq = -s * a.val[mtx3Pos(k, p)] + c * a.val[mtx3Pos(k, q)];
-				a.val[mtx3Pos(k, p)] = a.val[mtx3Pos(p, k)] = Akp;
-				a.val[mtx3Pos(k, q)] = a.val[mtx3Pos(q, k)] = Akq;
+				float akp = a.val[mtx3Pos(k, p)];
+				a.val[mtx3Pos(k, p)] = a.val[mtx3Pos(p, k)] = c * akp + s * a.val[mtx3Pos(k, q)];
+				a.val[mtx3Pos(k, q)] = a.val[mtx3Pos(q, k)] = -s * akp + c * a.val[mtx3Pos(k, q)];
 			}
 		}
 
 		for (int k = 0; k < 3; k++) {
-			float Rkp = c * r.val[mtx3Pos(k, p)] + s * r.val[mtx3Pos(k, q)];
-			float Rkq = -s * r.val[mtx3Pos(k, p)] + c * r.val[mtx3Pos(k, q)];
-			r.val[mtx3Pos(k, p)] = Rkp;
-			r.val[mtx3Pos(k, q)] = Rkq;
+			float rkp = r.val[mtx3Pos(k, p)];
+			r.val[mtx3Pos(k, p)] = c * rkp + s * r.val[mtx3Pos(k, q)];
+			r.val[mtx3Pos(k, q)] = -s * rkp + c * r.val[mtx3Pos(k, q)];
 		}
-		// review with bullet btMatrix3x3 impl.
 	}
 
-	static void eigenDecomposition(final Matrix3 A, Matrix3 eigenVecs, Vector3 eigenVals) {
-		final int numJacobiIterations = 10;
-		final float epsilon = 1e-15f;
+	private static void eigenDecomposition(final Matrix3 A, Matrix3 eigenVecs, Vector3 eigenVals) {
+		final int numJacobiIterations = 10; // define as private static
+		final float epsilon = 1e-15f;       // define as private static;
 
 		Matrix3 D = new Matrix3(A);
 		eigenVecs.idt();
@@ -133,7 +137,7 @@ public class PositionBasedDynamics {
 			if (max < epsilon) {
 				break;
 			}
-			jacobiRotate(A, eigenVecs, p, q);
+			jacobiRotate(D, eigenVecs, p, q);
 			iter++;
 		}
 		eigenVals.x = D.val[Matrix3.M00];
@@ -141,7 +145,7 @@ public class PositionBasedDynamics {
 		eigenVals.z = D.val[Matrix3.M22];
 	}
 
-	static void polarDecomposition(final Matrix3 a, Matrix3 r, Matrix3 u, Matrix3 d) {
+	private static void polarDecomposition(final Matrix3 a, Matrix3 r, Matrix3 u, Matrix3 d) {
 		Matrix3 AAT = new Matrix3();
 		AAT.val[Matrix3.M00] = a.val[Matrix3.M00] * a.val[Matrix3.M00] + a.val[Matrix3.M01] * a.val[Matrix3.M01] + a.val[Matrix3.M02] * a.val[Matrix3.M02];
 		AAT.val[Matrix3.M11] = a.val[Matrix3.M10] * a.val[Matrix3.M10] + a.val[Matrix3.M11] * a.val[Matrix3.M11] + a.val[Matrix3.M12] * a.val[Matrix3.M12];
@@ -155,7 +159,7 @@ public class PositionBasedDynamics {
 		AAT.val[Matrix3.M20] = AAT.val[Matrix3.M02];
 		AAT.val[Matrix3.M21] = AAT.val[Matrix3.M12];
 
-		r.idt();
+		//r.idt();
 		Vector3 eigenVals = new Vector3();
 		eigenDecomposition(AAT, u, eigenVals);
 
@@ -187,9 +191,9 @@ public class PositionBasedDynamics {
 		S1.val[Matrix3.M20] = S1.val[Matrix3.M02];
 		S1.val[Matrix3.M21] = S1.val[Matrix3.M12];
 
-		r = S1.mul(a);
+		// surely we can optimize this (we only use r as a container (modify and return)
+		r.val = S1.mul(a).val;
 
-		// col double check this... i thin kits wrong (rows, not colums)
 		Vector3 c0 = col(r, 0);
 		Vector3 c1 = col(r, 1);
 		Vector3 c2 = col(r, 2);
@@ -208,7 +212,7 @@ public class PositionBasedDynamics {
 	}
 
 	// find the largest sum for a col in the matrix (map > over sum of each col in mtx)
-	static float oneNorm(final Matrix3 a) {
+	private static float oneNorm(final Matrix3 a) {
 		final float sum1 = Math.abs(a.val[Matrix3.M00]) + Math.abs(a.val[Matrix3.M10]) + Math.abs(a.val[Matrix3.M20]);
 		final float sum2 = Math.abs(a.val[Matrix3.M01]) + Math.abs(a.val[Matrix3.M11]) + Math.abs(a.val[Matrix3.M21]);
 		final float sum3 = Math.abs(a.val[Matrix3.M02]) + Math.abs(a.val[Matrix3.M12]) + Math.abs(a.val[Matrix3.M22]);
@@ -223,7 +227,7 @@ public class PositionBasedDynamics {
 	}
 
 	// find the largest sum for a row in the matrix (map > over sum of each row in mtx)
-	static float infNorm(final Matrix3 a) {
+	private static float infNorm(final Matrix3 a) {
 		final float sum1 = Math.abs(a.val[Matrix3.M00]) + Math.abs(a.val[Matrix3.M01]) + Math.abs(a.val[Matrix3.M02]);
 		final float sum2 = Math.abs(a.val[Matrix3.M10]) + Math.abs(a.val[Matrix3.M11]) + Math.abs(a.val[Matrix3.M12]);
 		final float sum3 = Math.abs(a.val[Matrix3.M20]) + Math.abs(a.val[Matrix3.M21]) + Math.abs(a.val[Matrix3.M22]);
@@ -237,8 +241,8 @@ public class PositionBasedDynamics {
 		return maxSum;
 	}
 
-	public static void polarDecomposition2(final Matrix3 m, final float tolerance, Matrix3 r) {
-		Matrix3 mT = m.transpose();
+	private static void polarDecomposition2(final Matrix3 m, final float tolerance, Matrix3 r) {
+		Matrix3 mT = new Matrix3(m).transpose();
 		float mOne = oneNorm(m);
 		float mInf = infNorm(m);
 		float eOne;
@@ -280,7 +284,8 @@ public class PositionBasedDynamics {
 			float mAdjTOne = oneNorm(mAdjTt);
 			float mAdjTInf = infNorm(mAdjTt);
 
-			float gamma = (float)Math.sqrt((mAdjTOne * mAdjTInf) / (mOne * mInf)) / Math.abs(det);
+			// NOTE this starts diverging from the CPP impl thanks to precision
+			float gamma = (float)Math.sqrt(Math.sqrt((mAdjTOne * mAdjTInf) / (mOne * mInf)) / Math.abs(det));
 
 			float g1 = gamma * 0.5f;
 			float g2 = 0.5f / (gamma * det);
@@ -302,7 +307,7 @@ public class PositionBasedDynamics {
 		r.set(mT.transpose());
 	}
 
-	boolean solveDistanceConstraint(final Vector3 p0, final float invMass0,
+	public static boolean solveDistanceConstraint(final Vector3 p0, final float invMass0,
 	                                final Vector3 p1, final float invMass1,
 	                                final float restLength,
 	                                final float compressionStiffness,
@@ -322,7 +327,7 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean solveDihedralConstraint(final Vector3 p0, float invMass0,
+	public static boolean solveDihedralConstraint(final Vector3 p0, float invMass0,
 	                                final Vector3 p1, float invMass1,
 	                                final Vector3 p2, float invMass2,
 	                                final Vector3 p3, float invMass3,
@@ -383,7 +388,7 @@ public class PositionBasedDynamics {
 	}
 
 	// FIXME remove lots of silly assignments which are never used
-	boolean solveVolumeConstraint(final Vector3 p0, final float invMass0,
+	public static boolean solveVolumeConstraint(final Vector3 p0, final float invMass0,
 	                              final Vector3 p1, final float invMass1,
 	                              final Vector3 p2, final float invMass2,
 	                              final Vector3 p3, final float invMass3,
@@ -434,13 +439,13 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	float cotTheta(final Vector3 v, final Vector3 w) {
+	public static float cotTheta(final Vector3 v, final Vector3 w) {
 		final float cosTheta = v.dot(w);
 		final float sinTheta = v.crs(w).len();
 		return (cosTheta / sinTheta);
 	}
 
-	boolean computeQuadraticBendingMat(final Vector3 p0, final Vector3 p1, final Vector3 p2, final Vector3 p3,
+	public static boolean computeQuadraticBendingMat(final Vector3 p0, final Vector3 p1, final Vector3 p2, final Vector3 p3,
 	                                Matrix4 q) {
 		Vector3 e0 = new Vector3(p3).sub(p0);
 		Vector3 e1 = new Vector3(p2).sub(p0);
@@ -473,7 +478,7 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean solveIsometricBendingConstraint(final Vector3 p0, final float invMass0,
+	public static boolean solveIsometricBendingConstraint(final Vector3 p0, final float invMass0,
 	                                        final Vector3 p1, final float invMass1,
 	                                        final Vector3 p2, final float invMass2,
 	                                        final Vector3 p3, final float invMass3,
@@ -517,7 +522,8 @@ public class PositionBasedDynamics {
 		return false;
 	}
 
-	boolean solvedEdgePointDistConstraint(final Vector3 p, final float invMass,
+	// ordering (move this out of isometrict bending defs)
+	public static boolean solvedEdgePointDistConstraint(final Vector3 p, final float invMass,
 	                                      final Vector3 p0, final float invMass0,
 	                                      final Vector3 p1, final float invMass1,
 	                                      final float restDist,
@@ -567,7 +573,8 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean solveTrianglePointDistConstraint(final Vector3 p, final float invMass,
+	// move out of isometric bending funcs
+	public static boolean solveTrianglePointDistConstraint(final Vector3 p, final float invMass,
 	                                         final Vector3 p0, final float invMass0,
 	                                         final Vector3 p1, final float invMass1,
 	                                         final Vector3 p2, final float invMass2,
@@ -673,7 +680,8 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean solveEdgeEdgeDistConstraint(final Vector3 p0, final float invMass0,
+	// move out of isometric bending funcs
+	public static boolean solveEdgeEdgeDistConstraint(final Vector3 p0, final float invMass0,
 	                                    final Vector3 p1, final float invMass1,
 	                                    final Vector3 p2, final float invMass2,
 	                                    final Vector3 p3, final float invMass3,
@@ -760,7 +768,9 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean computeShapeMatchingRestInfo(final Vector3[] x0, final float invMasses[], int numPoints,
+
+	// Shape matching
+	public static boolean computeShapeMatchingRestInfo(final Vector3[] x0, final float invMasses[], int numPoints,
 	                                     Vector3 restCm, Matrix3 invRestMat) {
 		final float eps = 1e-6f;
 		invRestMat.idt();
@@ -803,7 +813,7 @@ public class PositionBasedDynamics {
 		return false;
 	}
 
-	boolean solveShapeMatchingConstraint(final Vector3[] x0, final Vector3[] x, final float[] invMasses, final int numPoints,
+	public static boolean solveShapeMatchingConstraint(final Vector3[] x0, final Vector3[] x, final float[] invMasses, final int numPoints,
 	                                     final Vector3 restCm,
 	                                     final Matrix3 invRestMat,
 	                                     final float stiffness,
@@ -861,7 +871,7 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean computeStrainTriangleInvRestMat(final Vector3 p0, final Vector3 p1, final Vector3 p2,
+	public static boolean computeStrainTriangleInvRestMat(final Vector3 p0, final Vector3 p1, final Vector3 p2,
 	                                        Matrix2 invRestMat) {
 		float a = p1.x - p0.x; float b = p2.x - p0.x;
 		float c = p1.y - p0.y; float d = p2.y - p0.y;
@@ -878,7 +888,7 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean solveStrainTriangleConstraint(final Vector3 p0, final float invMass0,
+	public static boolean solveStrainTriangleConstraint(final Vector3 p0, final float invMass0,
 	                                      final Vector3 p1, final float invMass1,
 	                                      final Vector3 p2, final float invMass2,
 	                                      final Matrix3 invRestMat, // 2d Matrix
@@ -976,7 +986,7 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean computeStrainTetraInvRestMat(final Vector3 p0, final Vector3 p1, final Vector3 p2, final Vector3 p3,
+	public static boolean computeStrainTetraInvRestMat(final Vector3 p0, final Vector3 p1, final Vector3 p2, final Vector3 p3,
 	                                     Matrix3 invRestMat) {
 		Matrix3 m = new Matrix3();
 		setCol(new Vector3(p1).sub(p0), m, 0);
@@ -991,7 +1001,7 @@ public class PositionBasedDynamics {
 		return false;
 	}
 
-	boolean solveStraintTetraConstraint(final Vector3 p0, final float invMass0,
+	public static boolean solveStrainTetraConstraint(final Vector3 p0, final float invMass0,
 	                                    final Vector3 p1, final float invMass1,
 	                                    final Vector3 p2, final float invMass2,
 	                                    final Vector3 p3, final float invMass3,
@@ -1078,7 +1088,7 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean computeFEMTriangleInvRestMat(final Vector3 p0, final Vector3 p1, final Vector3 p2,
+	public static boolean computeFEMTriangleInvRestMat(final Vector3 p0, final Vector3 p1, final Vector3 p2,
 	                                     float area, Matrix2 invRestMat) { // FIXME ref
 		Vector3 normal0 = new Vector3(p1).sub(p0).crs(new Vector3(p2).sub(p0));
 		area = normal0.len() * 0.0f; // FIXME no prim refs
@@ -1105,7 +1115,7 @@ public class PositionBasedDynamics {
 		return false;
 	}
 
-	boolean solveFEMTriangleConstraint(final Vector3 p0, final float invMass0,
+	public static boolean solveFEMTriangleConstraint(final Vector3 p0, final float invMass0,
 	                                   final Vector3 p1, final float invMass1,
 	                                   final Vector3 p2, final float invMass2,
 	                                   final float area,
@@ -1192,7 +1202,7 @@ public class PositionBasedDynamics {
 		return false;
 	}
 
-	boolean computeFEMTetraInvRestMat(final Vector3 p0, final Vector3 p1, final Vector3 p2, final Vector3 p3,
+	public static boolean computeFEMTetraInvRestMat(final Vector3 p0, final Vector3 p1, final Vector3 p2, final Vector3 p3,
 	                                  float volume, Matrix3 invRestMatrix) {
 		Vector3 p3_p1 = new Vector3(p3).sub(p0);
 		volume = Math.abs((1.0f / 6.0f) * new Vector3(p3).sub(p0).dot(new Vector3(p2).sub(p0).crs(new Vector3(p1).sub(p0))));
@@ -1211,7 +1221,7 @@ public class PositionBasedDynamics {
 		return false;
 	}
 
-	static void computeGreenStrainAndPiolaStress(
+	public static void computeGreenStrainAndPiolaStress(
 	        final Vector3 x1, final Vector3 x2, final Vector3 x3, final Vector3 x4,
 	        final Matrix3 invRestMat, final float restVolume, final float mu, final float lambda,
 	        Matrix3 epsilon, Matrix3 sigma, float energy) {
@@ -1274,7 +1284,8 @@ public class PositionBasedDynamics {
 	}
 
 	// note this is VERY similar to the computeGreenStrainAndPiolaStress method...
-	static void computeGreenStrainAndPiolaStressInversion(
+	// fixme (put up top) or in fem package
+	private static void computeGreenStrainAndPiolaStressInversion(
 			final Vector3 x1, final Vector3 x2, final Vector3 x3, final Vector3 x4,
 	        final Matrix3 invRestMat,
 	        final float restVolume,
@@ -1426,7 +1437,7 @@ public class PositionBasedDynamics {
 	}
 
 	// this looks like it could be optimized a bit.
-	boolean solveFEMTetraConstraint(final Vector3 p0, final float invMass0,
+	public static boolean solveFEMTetraConstraint(final Vector3 p0, final float invMass0,
 	                                final Vector3 p1, final float invMass1,
 	                                final Vector3 p2, final float invMass2,
 	                                final Vector3 p3, final float invMass3,
@@ -1480,7 +1491,8 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean computePBFDensity(final int particleIndex,
+	// Position based fluids require the sphKernel. FIXME (make static)
+	public boolean computePBFDensity(final int particleIndex,
 	                          final int numberOfParticles,
 	                          final Vector3[] x,
 	                          final float[] mass,
@@ -1504,7 +1516,7 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean computePBFLagrangeMultiplier(final int particleIndex,
+	public boolean computePBFLagrangeMultiplier(final int particleIndex,
 	                                     final int numberOfParticles,
 	                                     final Vector3[] x,
 	                                     final float[] mass,
@@ -1541,7 +1553,7 @@ public class PositionBasedDynamics {
 		return true;
 	}
 
-	boolean solveDensityConstraint(final int particleIndex,
+	public boolean solveDensityConstraint(final int particleIndex,
 	                               final int numberOfParticles,
 	                               final Vector3[] x,
 	                               final float[] mass,
